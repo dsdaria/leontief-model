@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Outputs
+outputs/
+data/
+*.csv
+*.npz
+*.png
+*.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+*.local
+
+# Old files
+streamlit_app.py
+streamlit_config.py
+streamlit_data.py
+streamlit_styles.py
+test_*.py
+clean_bom.py
+fix_encoding.py
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
