@@ -17,7 +17,6 @@ from flask_cors import CORS
 import numpy as np
 import pandas as pd
 import time
-import json
 import threading
 from datetime import datetime
 import logging
@@ -82,7 +81,7 @@ def compute():
         maxiter = data.get('maxiter', 1000)
         
         logger.info(f"📊 Запрос на расчёт: {country} {year} {source}")
-        logger.info(f"⚙️ Настройки: threads={threads}, method={method}, use_iterative={use_iterative}, tolerance={tolerance}, maxiter={maxiter}")
+        logger.info(f"⚙️ Настройки: threads={threads}, method={method}")
         
         # Ключ кэша с учётом настроек
         cache_key = f"{country}_{year}_{source}_{threads}_{method}_{tolerance}_{maxiter}"
@@ -142,7 +141,28 @@ def compute():
         
         # Генерация сценариев
         logger.info("🎯 Генерация сценариев...")
-        scenarios = generate_scenarios(model, raw_data['industries'], raw_data['Y'], L)
+        scenarios = {}
+        n = len(raw_data['industries'])
+        L_mat = L.values if isinstance(L, pd.DataFrame) else L
+        
+        def find_indices(keywords):
+            indices = []
+            for i, ind in enumerate(raw_data['industries']):
+                for kw in keywords:
+                    if kw.lower() in ind.lower():
+                        indices.append(i)
+                        break
+            return indices
+        
+        man_indices = find_indices(['manufacturing', 'metal', 'chemical'])
+        if man_indices:
+            delta = np.zeros(n)
+            for idx in man_indices[:3]:
+                delta[idx] = 500
+            scenarios['Рост промышленности'] = pd.DataFrame({
+                'Отрасль': raw_data['industries'],
+                'Изменение_выпуска': L_mat @ delta
+            })
         
         # Подготовка результата для сериализации
         result = {
@@ -247,122 +267,9 @@ def get_settings():
     })
 
 
-def generate_scenarios(model, industries, Y_base, L_matrix):
-    """Генерация сценариев"""
-    import numpy as np
-    
-    scenarios = {}
-    n = len(industries)
-    
-    if L_matrix is None:
-        return scenarios
-    
-    if isinstance(L_matrix, pd.DataFrame):
-        L = L_matrix.values
-    else:
-        L = L_matrix
-    
-    def find_indices(keywords):
-        indices = []
-        for i, ind in enumerate(industries):
-            ind_lower = ind.lower()
-            for kw in keywords:
-                if kw.lower() in ind_lower:
-                    indices.append(i)
-                    break
-        return indices
-    
-    # Сценарий 1: Рост промышленности
-    man_indices = find_indices(['manufacturing', 'metal', 'chemical', 'machinery', 'industrial'])
-    if man_indices:
-        delta = np.zeros(n)
-        shock_sum = 0
-        for idx in man_indices[:5]:
-            val = 300
-            delta[idx] = val
-            shock_sum += val
-        delta_X = L @ delta
-        scenarios['Рост промышленности'] = pd.DataFrame({
-            'Отрасль': industries,
-            'Изменение_выпуска': delta_X
-        })
-        logger.info(f"   📊 Сценарий 'Рост промышленности': шок {shock_sum:.0f} млн €")
-    
-    # Сценарий 2: Рост IT
-    it_indices = find_indices(['it', 'computer', 'software', 'telecom', 'information', 'technology'])
-    if it_indices:
-        delta = np.zeros(n)
-        shock_sum = 0
-        for idx in it_indices[:3]:
-            val = 200
-            delta[idx] = val
-            shock_sum += val
-        delta_X = L @ delta
-        scenarios['Рост IT-сектора'] = pd.DataFrame({
-            'Отрасль': industries,
-            'Изменение_выпуска': delta_X
-        })
-        logger.info(f"   📊 Сценарий 'Рост IT-сектора': шок {shock_sum:.0f} млн €")
-    
-    # Сценарий 3: Спад строительства
-    const_indices = find_indices(['construction', 'building', 'civil', 'architecture'])
-    if const_indices:
-        delta = np.zeros(n)
-        shock_sum = 0
-        for idx in const_indices[:2]:
-            val = -300
-            delta[idx] = val
-            shock_sum += val
-        delta_X = L @ delta
-        scenarios['Спад строительства'] = pd.DataFrame({
-            'Отрасль': industries,
-            'Изменение_выпуска': delta_X
-        })
-        logger.info(f"   📊 Сценарий 'Спад строительства': шок {shock_sum:.0f} млн €")
-    
-    # Сценарий 4: Зелёные инвестиции
-    energy_indices = find_indices(['electricity', 'energy', 'renewable', 'solar', 'wind', 'nuclear', 'power'])
-    transport_indices = find_indices(['transport', 'vehicle', 'car', 'motor', 'automotive', 'railway'])
-    if energy_indices or transport_indices:
-        delta = np.zeros(n)
-        shock_sum = 0
-        for idx in energy_indices[:3]:
-            val = 150
-            delta[idx] = val
-            shock_sum += val
-        for idx in transport_indices[:2]:
-            val = 200
-            delta[idx] = val
-            shock_sum += val
-        delta_X = L @ delta
-        scenarios['Зелёные инвестиции'] = pd.DataFrame({
-            'Отрасль': industries,
-            'Изменение_выпуска': delta_X
-        })
-        logger.info(f"   📊 Сценарий 'Зелёные инвестиции': шок {shock_sum:.0f} млн €")
-    
-    # Сценарий 5: Рост туризма и услуг
-    service_indices = find_indices(['hotel', 'restaurant', 'tourism', 'hospitality', 'accommodation', 'travel'])
-    if service_indices:
-        delta = np.zeros(n)
-        shock_sum = 0
-        for idx in service_indices[:3]:
-            val = 250
-            delta[idx] = val
-            shock_sum += val
-        delta_X = L @ delta
-        scenarios['Рост туризма'] = pd.DataFrame({
-            'Отрасль': industries,
-            'Изменение_выпуска': delta_X
-        })
-        logger.info(f"   📊 Сценарий 'Рост туризма': шок {shock_sum:.0f} млн €")
-    
-    return scenarios
-
-
 if __name__ == '__main__':
-    # Для локального запуска: порт 5000
     # Для Render: порт из переменной окружения PORT
+    # Для локального запуска: порт 5000
     port = int(os.environ.get("PORT", 5000))
     
     print("=" * 60)
