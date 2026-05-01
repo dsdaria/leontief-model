@@ -31,9 +31,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Разрешаем кросс-доменные запросы (важно для Streamlit Cloud)
+CORS(app)
 
-# Кэш для результатов (in-memory)
+# ДИАГНОСТИКА: выводим информацию о запуске
+print("=" * 60, file=sys.stderr)
+print("🚀 ЗАПУСК REMOTE_SOLVER.PY", file=sys.stderr)
+print("=" * 60, file=sys.stderr)
+print(f"✅ Текущая директория: {os.getcwd()}", file=sys.stderr)
+print(f"✅ Файлы в директории: {os.listdir('.')}", file=sys.stderr)
+print("=" * 60, file=sys.stderr)
+
+# Кэш для результатов
 cache = {}
 cache_lock = threading.Lock()
 
@@ -73,7 +81,7 @@ def compute():
         year = data.get('year', 2020)
         source = data.get('source', 'eurostat')
         
-        # ========== НАСТРОЙКИ ПРОИЗВОДИТЕЛЬНОСТИ ==========
+        # Настройки производительности
         threads = data.get('threads', 8)
         use_iterative = data.get('use_iterative', True)
         method = data.get('method', 'bicgstab')
@@ -141,28 +149,7 @@ def compute():
         
         # Генерация сценариев
         logger.info("🎯 Генерация сценариев...")
-        scenarios = {}
-        n = len(raw_data['industries'])
-        L_mat = L.values if isinstance(L, pd.DataFrame) else L
-        
-        def find_indices(keywords):
-            indices = []
-            for i, ind in enumerate(raw_data['industries']):
-                for kw in keywords:
-                    if kw.lower() in ind.lower():
-                        indices.append(i)
-                        break
-            return indices
-        
-        man_indices = find_indices(['manufacturing', 'metal', 'chemical'])
-        if man_indices:
-            delta = np.zeros(n)
-            for idx in man_indices[:3]:
-                delta[idx] = 500
-            scenarios['Рост промышленности'] = pd.DataFrame({
-                'Отрасль': raw_data['industries'],
-                'Изменение_выпуска': L_mat @ delta
-            })
+        scenarios = generate_scenarios(model, raw_data['industries'], raw_data['Y'], L)
         
         # Подготовка результата для сериализации
         result = {
@@ -267,25 +254,133 @@ def get_settings():
     })
 
 
+def generate_scenarios(model, industries, Y_base, L_matrix):
+    """Генерация сценариев"""
+    import numpy as np
+    
+    scenarios = {}
+    n = len(industries)
+    
+    if L_matrix is None:
+        return scenarios
+    
+    if isinstance(L_matrix, pd.DataFrame):
+        L = L_matrix.values
+    else:
+        L = L_matrix
+    
+    def find_indices(keywords):
+        indices = []
+        for i, ind in enumerate(industries):
+            ind_lower = ind.lower()
+            for kw in keywords:
+                if kw.lower() in ind_lower:
+                    indices.append(i)
+                    break
+        return indices
+    
+    # Сценарий 1: Рост промышленности
+    man_indices = find_indices(['manufacturing', 'metal', 'chemical', 'machinery', 'industrial'])
+    if man_indices:
+        delta = np.zeros(n)
+        shock_sum = 0
+        for idx in man_indices[:5]:
+            val = 300
+            delta[idx] = val
+            shock_sum += val
+        delta_X = L @ delta
+        scenarios['Рост промышленности'] = pd.DataFrame({
+            'Отрасль': industries,
+            'Изменение_выпуска': delta_X
+        })
+        logger.info(f"   📊 Сценарий 'Рост промышленности': шок {shock_sum:.0f} млн €")
+    
+    # Сценарий 2: Рост IT
+    it_indices = find_indices(['it', 'computer', 'software', 'telecom', 'information', 'technology'])
+    if it_indices:
+        delta = np.zeros(n)
+        shock_sum = 0
+        for idx in it_indices[:3]:
+            val = 200
+            delta[idx] = val
+            shock_sum += val
+        delta_X = L @ delta
+        scenarios['Рост IT-сектора'] = pd.DataFrame({
+            'Отрасль': industries,
+            'Изменение_выпуска': delta_X
+        })
+        logger.info(f"   📊 Сценарий 'Рост IT-сектора': шок {shock_sum:.0f} млн €")
+    
+    # Сценарий 3: Спад строительства
+    const_indices = find_indices(['construction', 'building', 'civil', 'architecture'])
+    if const_indices:
+        delta = np.zeros(n)
+        shock_sum = 0
+        for idx in const_indices[:2]:
+            val = -300
+            delta[idx] = val
+            shock_sum += val
+        delta_X = L @ delta
+        scenarios['Спад строительства'] = pd.DataFrame({
+            'Отрасль': industries,
+            'Изменение_выпуска': delta_X
+        })
+        logger.info(f"   📊 Сценарий 'Спад строительства': шок {shock_sum:.0f} млн €")
+    
+    # Сценарий 4: Зелёные инвестиции
+    energy_indices = find_indices(['electricity', 'energy', 'renewable', 'solar', 'wind', 'nuclear', 'power'])
+    transport_indices = find_indices(['transport', 'vehicle', 'car', 'motor', 'automotive', 'railway'])
+    if energy_indices or transport_indices:
+        delta = np.zeros(n)
+        shock_sum = 0
+        for idx in energy_indices[:3]:
+            val = 150
+            delta[idx] = val
+            shock_sum += val
+        for idx in transport_indices[:2]:
+            val = 200
+            delta[idx] = val
+            shock_sum += val
+        delta_X = L @ delta
+        scenarios['Зелёные инвестиции'] = pd.DataFrame({
+            'Отрасль': industries,
+            'Изменение_выпуска': delta_X
+        })
+        logger.info(f"   📊 Сценарий 'Зелёные инвестиции': шок {shock_sum:.0f} млн €")
+    
+    # Сценарий 5: Рост туризма и услуг
+    service_indices = find_indices(['hotel', 'restaurant', 'tourism', 'hospitality', 'accommodation', 'travel'])
+    if service_indices:
+        delta = np.zeros(n)
+        shock_sum = 0
+        for idx in service_indices[:3]:
+            val = 250
+            delta[idx] = val
+            shock_sum += val
+        delta_X = L @ delta
+        scenarios['Рост туризма'] = pd.DataFrame({
+            'Отрасль': industries,
+            'Изменение_выпуска': delta_X
+        })
+        logger.info(f"   📊 Сценарий 'Рост туризма': шок {shock_sum:.0f} млн €")
+    
+    return scenarios
+
+
+# ДИАГНОСТИКА: выводим все зарегистрированные маршруты
+print("=" * 60, file=sys.stderr)
+print("📋 ЗАРЕГИСТРИРОВАННЫЕ МАРШРУТЫ:", file=sys.stderr)
+for rule in app.url_map.iter_rules():
+    print(f"   {rule}", file=sys.stderr)
+print("=" * 60, file=sys.stderr)
+
+
 if __name__ == '__main__':
-    # Для Render: порт из переменной окружения PORT
-    # Для локального запуска: порт 5000
+    # Для Render: порт из переменной окружения
     port = int(os.environ.get("PORT", 5000))
-    
-    print("=" * 60)
-    print("🚀 ЗАПУСК УДАЛЁННОГО РЕШАТЕЛЯ МОДЕЛИ ЛЕОНТЬЕВА")
-    print("=" * 60)
-    print(f"📡 API сервер запущен на http://0.0.0.0:{port}")
-    print(f"📋 Доступные эндпоинты:")
-    print(f"   GET  /api/health      - проверка состояния")
-    print(f"   POST /api/compute     - расчёт модели (с поддержкой настроек)")
-    print(f"   GET  /api/available   - доступные данные")
-    print(f"   GET  /api/cache/stats - статистика кэша")
-    print(f"   POST /api/cache/clear - очистка кэша")
-    print(f"   GET  /api/settings    - настройки сервера")
-    print("=" * 60)
-    print(f"💻 Доступно ядер CPU: {os.cpu_count()}")
-    print(f"🔧 По умолчанию: 8 потоков, метод BICGSTAB, точность 1e-8")
-    print("=" * 60)
-    
+    print("=" * 60, file=sys.stderr)
+    print("🚀 ЗАПУСК УДАЛЁННОГО РЕШАТЕЛЯ МОДЕЛИ ЛЕОНТЬЕВА", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    print(f"📡 API сервер запущен на http://0.0.0.0:{port}", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
