@@ -47,4 +47,50 @@
 
 ---
 
-## 🏗 Архитектура
+## 🏗 Архитектура системы
+
+```mermaid
+graph TB
+    subgraph "🌍 Внешняя среда"
+        U[👤 Пользователь]
+    end
+
+    subgraph "☁️ Облачная инфраструктура (Frontend)"
+        SC[Streamlit Cloud]
+        UI[🌐 Веб-интерфейс]
+        API_C[📡 Remote Client]
+    end
+
+    subgraph "☁️ Облачная инфраструктура (Backend)"
+        RENDER[Render.com]
+        FS[🚀 Flask Server]
+        CACHE[(🗄️ Кэш результатов)]
+        SOLVER[🧮 Leontief Solver]
+        PAR[⚡ Parallel Computing<br/>(8 threads)]
+    end
+
+    subgraph "📊 Источники данных"
+        EURO[(🇪🇺 Eurostat API)]
+        EXIO[(🌍 EXIOBASE API)]
+    end
+
+    %% Стрелки взаимодействия
+    U -->|1. Открывает сайт| SC
+    SC --> UI
+    
+    UI -->|2. POST /api/compute<br/>{country: 'FR', year: 2020}| API_C
+    API_C -->|3. HTTP Request| FS
+    
+    FS -->|4. Проверка| CACHE
+    
+    CACHE -->|5. Данные есть| FS
+    CACHE -->|6. Данных нет| SOLVER
+    
+    SOLVER --> PAR
+    PAR -->|7. Загрузка данных| EURO
+    PAR -->|7. Загрузка данных| EXIO
+    
+    SOLVER -->|8. JSON результат| FS
+    FS -->|9. Ответ API| API_C
+    API_C -->|10. Отрисовка| UI
+```
