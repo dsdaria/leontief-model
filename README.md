@@ -46,51 +46,37 @@
 | **GitHub репозиторий** | [https://github.com/dsdaria/leontief-model](https://github.com/dsdaria/leontief-model) |
 
 ---
-
 ## 🏗 Архитектура системы
 
 ```mermaid
-graph TB
-    subgraph "🌍 Внешняя среда"
-        U[👤 Пользователь]
+flowchart TB
+    subgraph Frontend ["☁️ Фронтенд (Streamlit Cloud)"]
+        UI["🌐 Веб-интерфейс"]
+        Client["📡 Remote Client"]
     end
 
-    subgraph "☁️ Облачная инфраструктура (Frontend)"
-        SC[Streamlit Cloud]
-        UI[🌐 Веб-интерфейс]
-        API_C[📡 Remote Client]
+    subgraph Backend ["⚙️ Бэкенд (Render.com)"]
+        Flask["🚀 Flask Server"]
+        Cache[("🗄️ Кэш")]
+        Solver["🧮 Leontief Solver"]
+        Parallel["⚡ Parallel Computing<br/>(8 threads)"]
     end
 
-    subgraph "☁️ Облачная инфраструктура (Backend)"
-        RENDER[Render.com]
-        FS[🚀 Flask Server]
-        CACHE[(🗄️ Кэш результатов)]
-        SOLVER[🧮 Leontief Solver]
-        PAR[⚡ Parallel Computing<br/>(8 threads)]
+    subgraph Data ["📊 Источники данных"]
+        Eurostat[("🇪🇺 Eurostat API")]
+        Exiobase[("🌍 EXIOBASE API")]
     end
 
-    subgraph "📊 Источники данных"
-        EURO[(🇪🇺 Eurostat API)]
-        EXIO[(🌍 EXIOBASE API)]
-    end
-
-    %% Стрелки взаимодействия
-    U -->|1. Открывает сайт| SC
-    SC --> UI
-    
-    UI -->|2. POST /api/compute<br/>{country: 'FR', year: 2020}| API_C
-    API_C -->|3. HTTP Request| FS
-    
-    FS -->|4. Проверка| CACHE
-    
-    CACHE -->|5. Данные есть| FS
-    CACHE -->|6. Данных нет| SOLVER
-    
-    SOLVER --> PAR
-    PAR -->|7. Загрузка данных| EURO
-    PAR -->|7. Загрузка данных| EXIO
-    
-    SOLVER -->|8. JSON результат| FS
-    FS -->|9. Ответ API| API_C
-    API_C -->|10. Отрисовка| UI
+    User["👤 Пользователь"] --> UI
+    UI --> Client
+    Client -->|"POST /api/compute"| Flask
+    Flask --> Cache
+    Cache -->|"Данные есть"| Flask
+    Cache -->|"Данных нет"| Solver
+    Solver --> Parallel
+    Parallel --> Eurostat
+    Parallel --> Exiobase
+    Solver --> Flask
+    Flask --> Client
+    Client --> UI
 ```
