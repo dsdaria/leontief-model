@@ -29,24 +29,21 @@ class CppCGSolver:
         print("🔍 ЗАГРУЗКА C++ БИБЛИОТЕКИ")
         print("=" * 60)
         
-        # Определяем расширение в зависимости от ОС
-        if os.name == 'nt':  # Windows
-            lib_extension = 'dll'
-        else:  # Linux/Mac
-            lib_extension = 'so'
-        
+        # Пути для поиска (Windows и Linux)
         possible_paths = [
-            # Windows пути
+            # Windows
             r"C:\Dasha\Streamlit\leontief-model\cpp_solver\cg_solver.dll",
-            os.path.join(os.path.dirname(__file__), "cpp_solver", f"cg_solver.{lib_extension}"),
-            os.path.join(os.path.dirname(__file__), f"cg_solver.{lib_extension}"),
-            f"./cpp_solver/cg_solver.{lib_extension}",
-            f"./cg_solver.{lib_extension}",
-            # Linux пути (для Render/Docker)
+            os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.dll"),
+            os.path.join(os.path.dirname(__file__), "cg_solver.dll"),
+            "./cpp_solver/cg_solver.dll",
+            "./cg_solver.dll",
+            # Linux (Render)
             "/app/cg_solver.so",
             "/app/cpp_solver/cg_solver.so",
-            "/app/cpp_solver/cg_solver.so",
             os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.so"),
+            os.path.join(os.path.dirname(__file__), "cg_solver.so"),
+            "./cpp_solver/cg_solver.so",
+            "./cg_solver.so",
         ]
         
         lib_path = None
