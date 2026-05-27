@@ -12,7 +12,7 @@ from pathlib import Path
 # Добавляем корневую директорию
 sys.path.insert(0, str(Path(__file__).parent))
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
@@ -52,6 +52,28 @@ request_stats = {
     'avg_response_time': 0,
     'start_time': datetime.now().isoformat()
 }
+
+
+# ========== ДОБАВЛЕННЫЙ КОРНЕВОЙ МАРШРУТ ==========
+@app.route('/')
+def index():
+    """Главная страница - информация о сервере"""
+    return jsonify({
+        'service': 'Leontief Model Remote Solver',
+        'status': 'running',
+        'endpoints': {
+            '/': 'GET - This information',
+            '/api/health': 'GET - Health check',
+            '/api/compute': 'POST - Compute Leontief model',
+            '/api/available': 'GET - Available countries and years',
+            '/api/cache/clear': 'POST - Clear cache',
+            '/api/cache/stats': 'GET - Cache statistics',
+            '/api/settings': 'GET - Server settings'
+        },
+        'streamlit_interface': 'http://localhost:8501',
+        'timestamp': datetime.now().isoformat()
+    })
+# ========== КОНЕЦ ДОБАВЛЕННОГО БЛОКА ==========
 
 
 @app.route('/api/health', methods=['GET'])
@@ -123,7 +145,8 @@ def compute():
         model = LeontiefModel(raw_data['Z'], raw_data['X'], raw_data['industries'])
         
         # Применяем настройки производительности
-        model.thread_manager.set_num_threads(threads, verbose=False)
+        if hasattr(model, 'thread_manager'):
+            model.thread_manager.set_num_threads(threads, verbose=False)
         
         # Настройка итерационного решателя
         if hasattr(model, 'iterative_solver'):

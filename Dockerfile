@@ -29,9 +29,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Открываем порты
-EXPOSE 5000 8501
+EXPOSE 10000 8501
 
 # Запуск удалённого решателя и Streamlit
+# Используем PORT из переменной окружения Render (по умолчанию 10000)
 CMD python remote_solver.py & \
     sleep 3 && \
     streamlit run app.py --server.port=8501 --server.address=0.0.0.0
