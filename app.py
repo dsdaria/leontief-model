@@ -25,7 +25,7 @@ from streamlit_app.system_metrics import (
     render_performance_dashboard
 )
 
-# Импорт страниц (из старых папок, если они есть)
+# Импорт страниц
 from streamlit_pages.dashboard import render_dashboard
 from streamlit_pages.heatmaps import render_heatmaps
 from streamlit_pages.multipliers import render_multipliers
@@ -33,8 +33,9 @@ from streamlit_pages.scenarios import render_scenarios
 from streamlit_pages.network import render_network_analysis
 from streamlit_pages.about import render_about
 from streamlit_pages.performance import render_performance
+from streamlit_pages.sparse_solver import render_sparse_solver  # НОВАЯ СТРАНИЦА
 
-# Импорт страницы системы (из новой структуры)
+# Импорт страницы системы
 from streamlit_app.pages.system import render_system_page
 
 warnings.filterwarnings('ignore')
@@ -63,6 +64,16 @@ if 'last_country' not in st.session_state:
 if 'last_year' not in st.session_state:
     st.session_state.last_year = st.session_state.selected_year
 
+# Настройки производительности
+if 'threads' not in st.session_state:
+    st.session_state.threads = 8
+if 'method' not in st.session_state:
+    st.session_state.method = "BICGSTAB (итерационный)"
+if 'tolerance' not in st.session_state:
+    st.session_state.tolerance = 1e-8
+if 'maxiter' not in st.session_state:
+    st.session_state.maxiter = 1000
+
 
 # ==================== ОСНОВНАЯ ФУНКЦИЯ ====================
 def main():
@@ -77,20 +88,34 @@ def main():
         st.session_state.last_source = st.session_state.data_source
         st.session_state.last_country = st.session_state.selected_country
         st.session_state.last_year = st.session_state.selected_year
-        # Очищаем кэш при смене источника
         st.cache_data.clear()
     
-    # Рендерим хедер
+
     render_header()
     
     # Рендерим сайдбар
+    pages_list = [
+        "🏠 Дашборд",
+        "🗺️ Тепловые карты",
+        "📈 Мультипликаторы",
+        "🎯 Сценарии",
+        "🔗 Сетевой анализ",
+        "⚡ Производительность",
+        "🔬 СЛАУ",  
+        "⚙️ Система",
+        "ℹ️ О модели"
+    ]
     render_sidebar()
     
-    # Загрузка данных с принудительным обновлением при смене источника
+    # Загрузка данных
     data = load_cached_model_data(
         st.session_state.selected_country,
         st.session_state.selected_year,
-        st.session_state.data_source
+        st.session_state.data_source,
+        st.session_state.threads,
+        st.session_state.method,
+        st.session_state.tolerance,
+        st.session_state.maxiter
     )
     st.session_state.data = data
     
@@ -102,14 +127,15 @@ def main():
     
     st.markdown("---")
     
-    # Роутинг страниц
+    # Словарь страниц (ключи должны совпадать с кнопками в sidebar)
     pages = {
         "🏠 Дашборд": render_dashboard,
         "🗺️ Тепловые карты": render_heatmaps,
         "📈 Мультипликаторы": render_multipliers,
         "🎯 Сценарии": render_scenarios,
         "🔗 Сетевой анализ": render_network_analysis,
-        "⚡ Производительность": render_performance,  # ← ДОБАВИТЬ
+        "⚡ Производительность": render_performance,
+        "🔬 СЛАУ": render_sparse_solver, 
         "⚙️ Система": render_system_page,
         "ℹ️ О модели": render_about
     }

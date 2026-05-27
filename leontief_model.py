@@ -313,3 +313,68 @@ class LeontiefModel:
             'L': self.L,
             'cond': self.condition_number
         }
+
+    # Добавьте в класс LeontiefModel:
+
+    def solve_system_direct(self, Y: np.ndarray, 
+                            use_parallel: bool = True) -> np.ndarray:
+        """
+        Прямое решение системы (I - A)X = Y
+        БЕЗ полной инверсии матрицы!
+        
+        Это ключевой метод для Этапа 3 ТЗ.
+        
+        Args:
+            Y: вектор или матрица конечного спроса
+            use_parallel: использовать ли пакетное решение для нескольких Y
+        
+        Returns:
+            X: вектор валового выпуска
+        """
+        if self.A is None:
+            self.calculate_matrix_A()
+        
+        I_minus_A = np.eye(self.n) - self.A
+        
+        # Импортируем наш решатель
+        from parallel_solver import solve_leontief_system
+        
+        return solve_leontief_system(I_minus_A, Y, method='auto' if use_parallel else 'direct')
+    
+    
+    def analyze_scenarios_direct(self, Y_base: np.ndarray, 
+                                 deltas: List[np.ndarray]) -> List[Dict]:
+        """
+        Анализ сценариев через прямое решение СЛАУ (без инверсии!)
+        
+        Args:
+            Y_base: базовый вектор спроса
+            deltas: список изменений спроса
+        
+        Returns:
+            список результатов анализа
+        """
+        if self.A is None:
+            self.calculate_matrix_A()
+        
+        I_minus_A = np.eye(self.n) - self.A
+        from parallel_solver import solve_leontief_system
+        
+        # Формируем все правые части
+        Y_list = [Y_base + delta for delta in deltas]
+        
+        # Решаем все системы параллельно
+        X_list = solve_leontief_system(I_minus_A, Y_list, method='batch')
+        
+        results = []
+        for i, (name, delta) in enumerate(deltas):
+            delta_X = X_list[i] - (np.linalg.solve(I_minus_A, Y_base) if i == 0 else X_list[0])
+            
+            results.append({
+                'name': name,
+                'delta_X': delta_X,
+                'total_effect': delta_X.sum(),
+                'multiplier': abs(delta_X.sum() / delta.sum()) if delta.sum() != 0 else 0
+            })
+        
+        return results

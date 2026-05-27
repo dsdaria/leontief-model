@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import time
 import sys
+import psutil  # ДОБАВЛЕНО
 from pathlib import Path
 from typing import Dict
 
@@ -18,6 +19,7 @@ from streamlit_app.remote_client import load_from_remote_solver, USE_REMOTE_SOLV
 from config import AVAILABLE_COUNTRIES, AVAILABLE_YEARS, DEFAULT_COUNTRY, DEFAULT_YEAR
 from leontief_model import LeontiefModel
 from unified_loader import load_data_with_source, get_source_info
+from cpp_bridge import is_cpp_available  # ДОБАВЛЕНО
 
 
 def render_header():
@@ -56,76 +58,113 @@ def render_header():
     """, unsafe_allow_html=True)
 
 
-def render_sidebar():
-    from config import EXIOBASE_COUNTRIES, EXIOBASE_YEARS
+def render_sidebar(pages_list=None):
+    """Рендеринг боковой панели с навигации
     
-    if USE_REMOTE_SOLVER:
-        with st.sidebar:
-            try:
-                import requests
-                response = requests.get(f"{REMOTE_SOLVER_URL}/api/health", timeout=2)
-                if response.status_code == 200:
-                    st.success("🟢 Удалённый решатель: онлайн")
-                else:
-                    st.error("🔴 Удалённый решатель: офлайн")
-            except:
-                st.error("🔴 Удалённый решатель: недоступен")
+    Args:
+        pages_list: список страниц для отображения (опционально)
+    """
+    from config import EXIOBASE_COUNTRIES, EXIOBASE_YEARS, AVAILABLE_COUNTRIES, AVAILABLE_YEARS, DEFAULT_COUNTRY, DEFAULT_YEAR
+    
+    # ========== СТАТУС C++ РЕШАТЕЛЯ ==========
+
+    
+    cpp_available = is_cpp_available()
+    
+    if cpp_available:
+        st.sidebar.success("✅ **C++ решатель: активен**")
+        st.sidebar.caption(f"💻 Доступно ядер: {psutil.cpu_count()}")
+    else:
+        st.sidebar.error("❌ **C++ решатель: не найден**")
+        st.sidebar.caption("Используется Python (медленнее)")
+    
+    st.sidebar.markdown("---")
+    # ========== КОНЕЦ БЛОКА СТАТУСА ==========
     
     st.sidebar.markdown("### 📊 Навигация")
     
-    pages = ["🏠 Дашборд", "🗺️ Тепловые карты", "📈 Мультипликаторы", "🎯 Сценарии", "🔗 Сетевой анализ", "⚡ Производительность", "⚙️ Система", "ℹ️ О модели"]
+    # Если список передан из app.py - используем его, иначе стандартный
+    if pages_list is None:
+        pages_list = [
+            "🏠 Дашборд",
+            "🗺️ Тепловые карты",
+            "📈 Мультипликаторы",
+            "🎯 Сценарии",
+            "🔗 Сетевой анализ",
+            "🔬 СЛАУ",
+            "⚙️ Система",
+            "ℹ️ О модели"
+        ]
     
-    for page in pages:
+    for page in pages_list:
         if st.sidebar.button(page, key=f"nav_{page}", use_container_width=True):
             st.session_state.current_page = page
+            st.rerun()
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🌍 Параметры")
     
+    # Источник данных
     source_options = ['eurostat', 'exiobase']
     source_labels = {'eurostat': '🇪🇺 Eurostat (64)', 'exiobase': '🌍 EXIOBASE (200+)'}
     
     selected_source = st.sidebar.selectbox(
-        "Источник", 
-        source_options, 
+        "Источник",
+        source_options,
         format_func=lambda x: source_labels[x],
         key="source_select"
     )
+    
     if selected_source != st.session_state.get('data_source'):
         st.session_state.data_source = selected_source
         st.cache_data.clear()
         st.rerun()
     
+    # Страна
     countries = EXIOBASE_COUNTRIES if st.session_state.get('data_source') == 'exiobase' else AVAILABLE_COUNTRIES
     selected_country = st.sidebar.selectbox(
-        "Страна", 
-        list(countries.keys()), 
+        "Страна",
+        list(countries.keys()),
         format_func=lambda x: f"{x} - {countries[x]}",
         key="country_select"
     )
     
+    # Год
     years = EXIOBASE_YEARS if st.session_state.get('data_source') == 'exiobase' else AVAILABLE_YEARS
     selected_year = st.sidebar.selectbox(
-        "Год", 
+        "Год",
         years,
         key="year_select"
     )
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        if st.button("Применить", use_container_width=True):
+        if st.button("✅ Применить", use_container_width=True):
             st.session_state.selected_country = selected_country
             st.session_state.selected_year = selected_year
             st.session_state.data_source = selected_source
             st.cache_data.clear()
             st.rerun()
     with col2:
-        if st.button("Сброс", use_container_width=True):
+        if st.button("🔄 Сброс", use_container_width=True):
             st.session_state.selected_country = DEFAULT_COUNTRY
             st.session_state.selected_year = DEFAULT_YEAR
             st.session_state.data_source = 'eurostat'
             st.cache_data.clear()
             st.rerun()
+    
+    # Настройки производительности
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ⚡ Производительность")
+    
+    threads = st.sidebar.slider(
+        "Количество потоков:",
+        min_value=1,
+        max_value=16,
+        value=st.session_state.get('threads', 8),
+        step=1
+    )
+    st.session_state.threads = threads
 
 
 def render_footer(data: Dict):
@@ -136,8 +175,6 @@ def render_footer(data: Dict):
         st.markdown(f"""
         <div style="text-align: center; color: #6c757d; padding: 1rem;">
             <p>🏭 Модель Леонтьева | Данные: {meta.get('source_name', 'Eurostat')} | 
-            Потоков: {meta.get('n_threads', st.session_state.get('threads', 8))} | 
-            Время расчёта: {meta.get('computation_time', 0):.2f} сек</p>
             <p>🌐 Расчёт выполнен на удалённом сервере | API: {REMOTE_SOLVER_URL}</p>
         </div>
         """, unsafe_allow_html=True)
