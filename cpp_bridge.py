@@ -1,10 +1,12 @@
 ﻿"""
 cpp_bridge.py - Мост между Python и C++ библиотекой для решения СЛАУ
+Поддерживает Windows (.dll) и Linux (.so)
 """
 
 import ctypes
 import numpy as np
 import os
+import sys
 import time
 from typing import Tuple, List, Optional
 from pathlib import Path
@@ -16,6 +18,7 @@ class CppCGSolver:
     _instance = None
     _lib = None
     _is_available = False
+    _load_attempted = False
     
     def __new__(cls):
         if cls._instance is None:
@@ -25,55 +28,87 @@ class CppCGSolver:
     
     def _load_library(self):
         """Загрузка C++ библиотеки (DLL для Windows, SO для Linux)"""
+        
+        if self._load_attempted:
+            return
+        
+        self._load_attempted = True
+        
         print("=" * 60)
         print("🔍 ЗАГРУЗКА C++ БИБЛИОТЕКИ")
         print("=" * 60)
+        print(f"🐍 Python версия: {sys.version}")
+        print(f"💻 Платформа: {sys.platform}")
+        print(f"📁 Текущая директория: {os.getcwd()}")
         
-        # Пути для поиска (Windows и Linux)
+        # Определяем расширение в зависимости от ОС
+        if sys.platform == 'win32':
+            lib_extension = 'dll'
+        else:
+            lib_extension = 'so'
+        
+        # Список возможных путей (приоритет от большего к меньшему)
         possible_paths = [
-            # Windows
-            r"C:\Dasha\Streamlit\leontief-model\cpp_solver\cg_solver.dll",
-            os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.dll"),
-            os.path.join(os.path.dirname(__file__), "cg_solver.dll"),
-            "./cpp_solver/cg_solver.dll",
-            "./cg_solver.dll",
-            # Linux (Render)
+            # Docker/Render пути (Linux)
             "/app/cg_solver.so",
             "/app/cpp_solver/cg_solver.so",
-            os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.so"),
+            "/app/cpp_solver/cg_solver.so",
+            # Относительные пути
             os.path.join(os.path.dirname(__file__), "cg_solver.so"),
-            "./cpp_solver/cg_solver.so",
-            "./cg_solver.so",
+            os.path.join(os.path.dirname(__file__), "cpp_solver", f"cg_solver.{lib_extension}"),
+            os.path.join(os.path.dirname(__file__), f"cg_solver.{lib_extension}"),
+            f"./cpp_solver/cg_solver.{lib_extension}",
+            f"./cg_solver.{lib_extension}",
+            # Windows абсолютные пути
+            r"C:\Dasha\Streamlit\leontief-model\cpp_solver\cg_solver.dll",
         ]
         
+        # Выводим все пути для отладки
+        print("📂 Проверяемые пути:")
+        for path in possible_paths:
+            exists = "✅" if os.path.exists(path) else "❌"
+            print(f"   {exists} {path}")
+        
+        # Ищем существующий файл
         lib_path = None
         for path in possible_paths:
             if os.path.exists(path):
                 lib_path = path
-                print(f"✅ Найдена библиотека: {path}")
+                print(f"\n✅ НАЙДЕНА БИБЛИОТЕКА: {path}")
                 break
         
         if lib_path is None:
-            print("❌ C++ библиотека НЕ НАЙДЕНА!")
-            print("   Проверенные пути:")
-            for path in possible_paths:
-                print(f"     - {path}")
+            print("\n❌ C++ БИБЛИОТЕКА НЕ НАЙДЕНА!")
+            print("   Проект будет использовать Python fallback (медленнее)")
             self._lib = None
             self._is_available = False
+            print("=" * 60)
             return
         
+        # Пробуем загрузить библиотеку
         try:
+            print(f"🔧 Загрузка библиотеки: {lib_path}")
             self._lib = ctypes.CDLL(lib_path)
-            print(f"✅ Библиотека загружена: {lib_path}")
+            print("✅ БИБЛИОТЕКА УСПЕШНО ЗАГРУЖЕНА!")
             
-            # Проверяем наличие функций
+            # Проверяем наличие необходимых функций
             required_functions = ['solve_cg', 'solve_batch_cg', 'free_memory']
+            missing_functions = []
+            
             for func_name in required_functions:
                 try:
                     getattr(self._lib, func_name)
                     print(f"   ✅ Функция {func_name} найдена")
                 except AttributeError:
+                    missing_functions.append(func_name)
                     print(f"   ❌ Функция {func_name} НЕ найдена")
+            
+            if missing_functions:
+                print(f"\n⚠️ ОТСУТСТВУЮТ ФУНКЦИИ: {missing_functions}")
+                self._lib = None
+                self._is_available = False
+                print("=" * 60)
+                return
             
             # Определяем типы аргументов для solve_cg
             self._lib.solve_cg.argtypes = [
@@ -110,14 +145,17 @@ class CppCGSolver:
             self._lib.free_memory.argtypes = [ctypes.POINTER(ctypes.c_double)]
             
             self._is_available = True
-            print("✅ C++ решатель ГОТОВ К РАБОТЕ!")
+            print("\n" + "=" * 60)
+            print("🎉 C++ РЕШАТЕЛЬ ГОТОВ К РАБОТЕ!")
+            print("   • Параллельные вычисления: OpenMP")
+            print("   • Метод: сопряжённых градиентов (CG)")
+            print("=" * 60)
             
         except Exception as e:
-            print(f"❌ Ошибка загрузки библиотеки: {e}")
+            print(f"\n❌ ОШИБКА ЗАГРУЗКИ БИБЛИОТЕКИ: {e}")
             self._lib = None
             self._is_available = False
-        
-        print("=" * 60)
+            print("=" * 60)
     
     def is_available(self) -> bool:
         return self._is_available and self._lib is not None
@@ -128,8 +166,10 @@ class CppCGSolver:
         """Решение СЛАУ методом сопряжённых градиентов (C++)"""
         
         if not self.is_available():
-            print("⚠️ C++ решатель недоступен, используется fallback (Python)")
+            print("⚠️ C++ решатель недоступен, используется Python fallback")
             return self._fallback_solve(A, b, tolerance, max_iter)
+        
+        print(f"🚀 Используется C++ решатель с {num_threads} потоками")
         
         n = A.shape[0]
         
@@ -208,6 +248,8 @@ class CppCGSolver:
         """Fallback на scipy (если C++ недоступен)"""
         from scipy.sparse import csr_matrix
         from scipy.sparse.linalg import cg
+        
+        print("🐍 Используется Python fallback (scipy.sparse.linalg.cg)")
         
         A_sparse = csr_matrix(A)
         start = time.perf_counter()
