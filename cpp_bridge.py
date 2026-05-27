@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 class CppCGSolver:
-    """Класс для работы с C++ DLL решателем"""
+    """Класс для работы с C++ DLL/SO решателем"""
     
     _instance = None
     _lib = None
@@ -24,35 +24,50 @@ class CppCGSolver:
         return cls._instance
     
     def _load_library(self):
-        """Загрузка C++ DLL"""
+        """Загрузка C++ библиотеки (DLL для Windows, SO для Linux)"""
         print("=" * 60)
         print("🔍 ЗАГРУЗКА C++ БИБЛИОТЕКИ")
         print("=" * 60)
         
+        # Определяем расширение в зависимости от ОС
+        if os.name == 'nt':  # Windows
+            lib_extension = 'dll'
+        else:  # Linux/Mac
+            lib_extension = 'so'
+        
         possible_paths = [
+            # Windows пути
             r"C:\Dasha\Streamlit\leontief-model\cpp_solver\cg_solver.dll",
-            os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.dll"),
-            os.path.join(os.path.dirname(__file__), "cg_solver.dll"),
-            "./cpp_solver/cg_solver.dll",
-            "./cg_solver.dll",
+            os.path.join(os.path.dirname(__file__), "cpp_solver", f"cg_solver.{lib_extension}"),
+            os.path.join(os.path.dirname(__file__), f"cg_solver.{lib_extension}"),
+            f"./cpp_solver/cg_solver.{lib_extension}",
+            f"./cg_solver.{lib_extension}",
+            # Linux пути (для Render/Docker)
+            "/app/cg_solver.so",
+            "/app/cpp_solver/cg_solver.so",
+            "/app/cpp_solver/cg_solver.so",
+            os.path.join(os.path.dirname(__file__), "cpp_solver", "cg_solver.so"),
         ]
         
         lib_path = None
         for path in possible_paths:
             if os.path.exists(path):
                 lib_path = path
-                print(f"✅ Найдена DLL: {path}")
+                print(f"✅ Найдена библиотека: {path}")
                 break
         
         if lib_path is None:
             print("❌ C++ библиотека НЕ НАЙДЕНА!")
+            print("   Проверенные пути:")
+            for path in possible_paths:
+                print(f"     - {path}")
             self._lib = None
             self._is_available = False
             return
         
         try:
             self._lib = ctypes.CDLL(lib_path)
-            print(f"✅ DLL загружена: {lib_path}")
+            print(f"✅ Библиотека загружена: {lib_path}")
             
             # Проверяем наличие функций
             required_functions = ['solve_cg', 'solve_batch_cg', 'free_memory']
@@ -101,7 +116,7 @@ class CppCGSolver:
             print("✅ C++ решатель ГОТОВ К РАБОТЕ!")
             
         except Exception as e:
-            print(f"❌ Ошибка загрузки DLL: {e}")
+            print(f"❌ Ошибка загрузки библиотеки: {e}")
             self._lib = None
             self._is_available = False
         
@@ -116,6 +131,7 @@ class CppCGSolver:
         """Решение СЛАУ методом сопряжённых градиентов (C++)"""
         
         if not self.is_available():
+            print("⚠️ C++ решатель недоступен, используется fallback (Python)")
             return self._fallback_solve(A, b, tolerance, max_iter)
         
         n = A.shape[0]

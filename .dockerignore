@@ -1,0 +1,14 @@
+venv
+venv2
+__pycache__
+*.pyc
+outputs
+logs
+.git
+.gitignore
+*.md
+.DS_Store
+*.bat
+*.sh
+!cpp_solver/*.cpp
+!cpp_solver/*.h
