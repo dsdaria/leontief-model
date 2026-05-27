@@ -12,7 +12,8 @@ from multiprocessing import cpu_count
 
 # Попытка импорта модулей параллельных вычислений
 try:
-    from parallel_computing import IterativeSolver, ThreadManager, ParallelScenarioAnalyzer, PerformanceMetrics
+    #from parallel_computing import IterativeSolver, ThreadManager, ParallelScenarioAnalyzer, PerformanceMetrics
+    from parallel_computing import ThreadManager, ParallelScenarioAnalyzer, PerformanceMetrics 
     PARALLEL_AVAILABLE = True
    # print("✅ Модуль parallel_computing загружен успешно")
 except ImportError as e:
@@ -20,10 +21,10 @@ except ImportError as e:
     print("   Параллельные вычисления отключены.")
     PARALLEL_AVAILABLE = False
     
-    # Создаем заглушки (классы на верхнем уровне, а не внутри другого класса!)
-    class IterativeSolver:
-        def __init__(self, *args, **kwargs): pass
-        def solve_parallel_columns(self, *args, **kwargs): return None
+
+    # class IterativeSolver:
+    #     def __init__(self, *args, **kwargs): pass
+    #     def solve_parallel_columns(self, *args, **kwargs): return None
     
     class ThreadManager:
         def __init__(self, *args, **kwargs): pass
@@ -60,10 +61,10 @@ class LeontiefModel:
         # Инициализация модулей параллельных вычислений (если доступны)
         if PARALLEL_AVAILABLE:
             self.thread_manager = ThreadManager()
-            self.iterative_solver = IterativeSolver()
+            #self.iterative_solver = IterativeSolver()
         else:
             self.thread_manager = ThreadManager()  # Используем заглушку
-            self.iterative_solver = IterativeSolver()  # Используем заглушку
+            #self.iterative_solver = IterativeSolver()  # Используем заглушку
         
     def calculate_matrix_A(self):
         """Расчёт матрицы прямых затрат A"""
