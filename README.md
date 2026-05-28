@@ -1,82 +1,107 @@
 # 🏭 Модель межотраслевого баланса Леонтьева
 
-<div align="center">
-
-[![Streamlit App](https://img.shields.io/badge/Streamlit-Cloud-red?style=for-the-badge&logo=streamlit)](https://leontief-model.streamlit.app)
-[![Render](https://img.shields.io/badge/Render-Backend-46E3B7?style=for-the-badge&logo=render)](https://leontief-model.onrender.com/api/health)
-[![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-
-**Модель "Затраты-Выпуск" Василия Леонтьева с удаленным решателем и параллельными вычислениями**
-
-</div>
-
----
+**Модель "Затраты-Выпуск" Василия Леонтьева с параллельным C++ решателем и многовариантными расчетами**
 
 ## 📖 О проекте
 
-Данный проект представляет собой реализацию **модели межотраслевого баланса Леонтьева** — экономико-математической модели, позволяющей анализировать взаимосвязи между отраслями экономики.
+Проект реализует статическую межотраслевую модель Леонтьева для анализа структурных взаимосвязей в экономике на основе данных Eurostat и EXIOBASE. Основное уравнение: X = AX + Y, где X — вектор валового выпуска, A — матрица прямых затрат, Y — вектор конечного спроса. Решение: X = (I - A)⁻¹Y.
 
-### Основные возможности
+## 📊 Основные возможности
 
-| Функция | Описание |
-|---------|----------|
-| **Дашборд** | Ключевые метрики, топ-10 отраслей, распределение мультипликаторов |
-| **Тепловые карты** | Визуализация матриц A и L (с логарифмической шкалой) |
-| **Мультипликаторы** | Анализ мультипликаторов выпуска и затрат |
-| **Сценарии** | Моделирование экономических шоков (рост/спад отраслей) |
-| **Сетевой анализ** | Выявление ключевых поставщиков и потребителей |
-| **Производительность** | Настройка потоков, точности, бенчмарк |
-| **Системный мониторинг** | CPU, RAM, время расчётов |
+| Функция | Экономический смысл |
+|---------|---------------------|
+| Дашборд | Ключевые метрики, топ-10 отраслей, распределение мультипликаторов |
+| Тепловые карты | Визуализация матриц A (прямые затраты) и L (полные затраты) |
+| Мультипликаторы | Анализ мультипликаторов выпуска (влияние на экономику) и затрат (зависимость от поставщиков) |
+| Сценарии | Моделирование экономических шоков (рост/спад в отраслях) |
+| Сетевой анализ | Выявление ключевых поставщиков и потребителей |
+| Разреженный решатель | Тестирование параллельного CG метода на C++ (1, 2, 4 потока) |
+| Многовариантные расчеты | Одновременное решение СЛАУ для множества правых частей Y |
 
-### Источники данных
+## 📂 Источники данных
 
 | Источник | Отраслей | Годы | Стран |
 |----------|----------|------|-------|
-| **Eurostat** | 64 | 2010-2022 | 27 стран ЕС |
-| **EXIOBASE** | 200+ | 2015-2022 | 11 стран |
+| Eurostat | 64 | 2010-2022 | 27 стран ЕС |
+| EXIOBASE | 200+ | 2015-2022 | 11 стран |
 
----
+## 🏗 Архитектура проекта
+leontief-model/
+├── app.py # Главный Streamlit интерфейс
+├── remote_solver.py # Flask сервер для C++ решателя
+├── cpp_bridge.py # Мост между Python и C++ (ctypes)
+├── cpp_solver/ # C++ решатель
+│ └── cg_solver.cpp # Реализация CG метода с OpenMP
+├── streamlit_pages/ # Страницы интерфейса
+│ ├── dashboard.py
+│ ├── heatmaps.py
+│ ├── multipliers.py
+│ ├── scenarios.py
+│ ├── network.py
+│ └── sparse_solver.py
+├── streamlit_app/ # Базовые компоненты
+│ ├── components.py
+│ ├── system_metrics.py
+│ └── remote_client.py
+├── data_loader.py # Загрузка данных из Eurostat
+├── leontief_model.py # Основная модель
+├── parallel_computing.py # Управление потоками
+└── requirements.txt # Зависимости Python
 
-## 🚀 Демо
 
-| Компонент | URL |
-|-----------|-----|
-| **Веб-интерфейс** | [https://leontief-model.streamlit.app](https://leontief-model.streamlit.app) |
-| **API (здоровье)** | [https://leontief-model.onrender.com/api/health](https://leontief-model.onrender.com/api/health) |
-| **GitHub репозиторий** | [https://github.com/dsdaria/leontief-model](https://github.com/dsdaria/leontief-model) |
+## 🔄 Схема работы (локальный запуск)
 
----
-## 🏗 Архитектура системы
+**Терминал 1 (бэкенд):**
+```bash
+python remote_solver.py
+→ Запускает Flask сервер с C++ решателем
+→ Загружает cg_solver.dll (C++ с OpenMP)
 
-```mermaid
-flowchart TB
-    subgraph Frontend ["☁️ Фронтенд (Streamlit Cloud)"]
-        UI["🌐 Веб-интерфейс"]
-        Client["📡 Remote Client"]
-    end
+Терминал 2 (фронтенд):
 
-    subgraph Backend ["⚙️ Бэкенд (Render.com)"]
-        Flask["🚀 Flask Server"]
-        Cache[("🗄️ Кэш")]
-        Solver["🧮 Leontief Solver"]
-        Parallel["⚡ Parallel Computing<br/>(8 threads)"]
-    end
+bash
+streamlit run app.py
+→ Запускает веб-интерфейс
+→ Подключается к решателю через cpp_bridge.py
 
-    subgraph Data ["📊 Источники данных"]
-        Eurostat[("🇪🇺 Eurostat API")]
-        Exiobase[("🌍 EXIOBASE API")]
-    end
+Обмен данными между терминалами через HTTP на порту 5000.
 
-    User["👤 Пользователь"] --> UI
-    UI --> Client
-    Client -->|"POST /api/compute"| Flask
-    Flask --> Cache
-    Cache -->|"Данные есть"| Flask
-    Cache -->|"Данных нет"| Solver
-    Solver --> Parallel
-    Parallel --> Eurostat
-    Parallel --> Exiobase
-    Solver --> Flask
-    Flask --> Client
-    Client --> UI
-```
+
+## ⚡ C++ решатель (cg_solver.cpp)
+
+Реализован метод сопряжённых градиентов (Conjugate Gradient) для разреженных матриц в CSR формате:
+
+class SparseMatrixCSR {
+    std::vector<double> values;      // Значения ненулевых элементов
+    std::vector<int> col_indices;    // Индексы столбцов
+    std::vector<int> row_ptr;        // Указатели на начало строк
+    int n;                           // Размер матрицы
+    std::vector<double> matvec_parallel(const std::vector<double>& x, int num_threads);
+};
+
+int conjugate_gradient(A, b, x, max_iter, tolerance, num_threads, residual_norm);
+
+Параллелизация реализована через OpenMP: умножение матрицы на вектор распараллеливается по строкам, скалярные произведения — с редукцией.
+
+## 🔬 Тестирование производительности
+
+Результаты для матрицы 5000×5000 (плотность 30%):
+
+| Потоков | Время | Ускорение | Эффективность |
+|---------|-------|-----------|---------------|
+| 1 | 11.78 сек | 1.00x | 100% |
+| 2 | 6.47 сек | 1.82x | 91% |
+| 4 | 5.73 сек | 2.06x | 52% |
+
+Многовариантные расчеты (10 сценариев, 4 потока): последовательно 11.15 сек, batch (4 потока) 4.29 сек, ускорение 2.60x.
+
+## 🚀 Запуск проекта (локально)
+
+Требования: Windows 10/11 или Linux/macOS, компилятор C++ с OpenMP (Visual Studio / GCC / Clang), Python 3.10+. Установка: pip install -r requirements.txt. Компиляция C++ решателя (Windows): cd cpp_solver && cl /O2 /EHsc /LD /openmp /Fe:cg_solver.dll cg_solver.cpp && cd .. Запуск (два терминала): python remote_solver.py и streamlit run app.py. Открыть в браузере: http://localhost:8501. Проверка работы C++: python -c "from cpp_bridge import is_cpp_available; print('C++ доступен:', is_cpp_available())"
+
+## 📈 Пример экономического анализа
+
+Сценарий: Рост государственных закупок в промышленности на 10%. Промышленность: +850 млн €, Строительство: +320 млн €, Транспорт: +180 млн €, Услуги: +95 млн €. Общий эффект: +1 445 млн €. Мультипликатор: 1.7 (каждый 1 млн € госзакупок создаёт 1.7 млн € в экономике).
+
+## 👥 Лицензия:
+MIT.
