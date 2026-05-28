@@ -1,5 +1,5 @@
 ﻿"""
-test_cpp_simple.py - Простая проверка C++ DLL
+test_cpp_simple.py - проверка C++ DLL
 """
 
 import ctypes

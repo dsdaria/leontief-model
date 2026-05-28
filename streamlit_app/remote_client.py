@@ -10,9 +10,8 @@ import time
 import os
 from typing import Dict, Optional
 
-# ========== ВАЖНО: URL для облачного деплоя ==========
-# Для локальной разработки: http://localhost:5000
-# Для облака: читаем из переменной окружения BACKEND_URL
+# ========== URL для облачного деплоя ==========
+
 REMOTE_SOLVER_URL = os.environ.get("BACKEND_URL", "http://localhost:5000")
 USE_REMOTE_SOLVER = True
 

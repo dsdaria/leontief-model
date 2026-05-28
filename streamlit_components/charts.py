@@ -22,7 +22,6 @@ def create_heatmap_plotly(
         values = df.values
         colorbar_title = "Коэффициент"
     
-    # Увеличиваем высоту для большего количества отраслей
     height = max(500, n * 12)
     
     fig = go.Figure(data=go.Heatmap(
@@ -98,7 +97,6 @@ def create_scenario_analysis(
     scenario_name: str,
     top_n: int = 20
 ) -> go.Figure:
-    # Проверяем название колонки с изменениями
     value_col = 'Изменение_выпуска' if 'Изменение_выпуска' in df.columns else df.columns[-1]
     industry_col = 'Отрасль' if 'Отрасль' in df.columns else df.columns[0]
     

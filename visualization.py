@@ -16,8 +16,7 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 def plot_matrix_heatmap(matrix, title, industries, filename, cmap='Blues'):
     """Тепловая карта матрицы"""
     fig, ax = plt.subplots(figsize=(14, 12))
-    
-    # Показываем не более 40 отраслей
+   
     n = min(len(industries), 40)
     matrix_display = matrix[:n, :n]
     labels = [ind[:30] for ind in industries[:n]]

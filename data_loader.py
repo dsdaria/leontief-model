@@ -22,7 +22,7 @@ class EurostatDataLoader:
     def __init__(self, country_code: str = DEFAULT_COUNTRY, year: int = DEFAULT_YEAR):
         self.country_code = country_code
         self.year = year
-        self.table_code = "naio_10_cp1700"  # ← ИСПРАВИТЬ ЗДЕСЬ
+        self.table_code = "naio_10_cp1700" 
         self.base_url = "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data"
         
     def get_input_output_tables(self) -> Dict:

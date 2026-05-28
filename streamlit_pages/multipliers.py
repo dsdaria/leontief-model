@@ -15,7 +15,6 @@ def render_multipliers(data):
     section_title("Анализ мультипликаторов", "📈")
     
     if data['multipliers'] is not None:
-        # Исправленный info_box без лишних тегов strong
         st.markdown("""
         <div class="info-box">
             🎯 Что такое мультипликатор?<br>

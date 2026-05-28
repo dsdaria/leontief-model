@@ -7,11 +7,11 @@ import pandas as pd
 import numpy as np
 import time
 import sys
-import psutil  # ДОБАВЛЕНО
+import psutil  
 from pathlib import Path
 from typing import Dict
 
-# Добавляем корневую директорию в путь для импорта корневого config.py
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from streamlit_app.config import COLOR_SCHEME
@@ -19,8 +19,7 @@ from streamlit_app.remote_client import load_from_remote_solver, USE_REMOTE_SOLV
 from config import AVAILABLE_COUNTRIES, AVAILABLE_YEARS, DEFAULT_COUNTRY, DEFAULT_YEAR
 from leontief_model import LeontiefModel
 from unified_loader import load_data_with_source, get_source_info
-from cpp_bridge import is_cpp_available  # ДОБАВЛЕНО
-
+from cpp_bridge import is_cpp_available 
 
 def render_header():
     source_info = get_source_info(st.session_state.get('data_source', 'eurostat'))

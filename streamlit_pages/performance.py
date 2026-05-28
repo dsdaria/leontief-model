@@ -1,6 +1,6 @@
 ﻿"""
 streamlit_pages/performance.py
-Страница анализа производительности - ПОЛНОСТЬЮ БЕЗ MATPLOTLIB
+Страница анализа производительности
 """
 
 import streamlit as st
@@ -140,15 +140,15 @@ def run_parallel_demo(n: int = 64, n_scenarios: int = 50):
     # Создаём DataFrame с результатами
     results_df = pd.DataFrame(results)
     
-    # ========== ВИЗУАЛИЗАЦИЯ РЕЗУЛЬТАТОВ (БЕЗ GRADIENT) ==========
+    # ========== ВИЗУАЛИЗАЦИЯ РЕЗУЛЬТАТОВ  ==========
     
     st.markdown("---")
     st.markdown("## 📊 РЕЗУЛЬТАТЫ СРАВНЕНИЯ")
     
-    # Таблица с результатами (без background_gradient)
+    # Таблица с результатами
     st.markdown("### 📋 Таблица результатов")
     
-    # Форматируем таблицу вручную через markdown
+
     table_md = "| Метод | Потоков | Время (сек) | Ускорение |\n"
     table_md += "|-------|---------|-------------|-----------|\n"
     
@@ -159,7 +159,6 @@ def run_parallel_demo(n: int = 64, n_scenarios: int = 50):
     
     st.markdown(table_md)
     
-    # Альтернативный способ - просто показать dataframe без стилей
     st.dataframe(
         results_df,
         use_container_width=True,
@@ -542,7 +541,7 @@ def render_performance(data: Dict):
             st.metric("Текущая загрузка CPU", f"{cpu_percent:.0f}%")
             st.metric("NumPy версия", np.__version__)
         
-        # Информация о текущей модели (если загружена)
+        # Информация о текущей модели
         if data.get('metadata', {}).get('data_loaded'):
             st.markdown("### 📊 Производительность текущей модели")
             meta = data['metadata']

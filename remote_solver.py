@@ -2,7 +2,6 @@
 Удаленный решатель модели Леонтьева
 REST API сервер для вычислений
 Запуск: python remote_solver.py
-Деплой: Render.com (gunicorn remote_solver:app)
 """
 
 import sys
@@ -399,7 +398,6 @@ print("=" * 60, file=sys.stderr)
 
 
 if __name__ == '__main__':
-    # Для Render: порт из переменной окружения
     port = int(os.environ.get("PORT", 5000))
     print("=" * 60, file=sys.stderr)
     print("🚀 ЗАПУСК УДАЛЁННОГО РЕШАТЕЛЯ МОДЕЛИ ЛЕОНТЬЕВА", file=sys.stderr)

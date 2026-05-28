@@ -9,7 +9,7 @@ from streamlit_pages.scenarios import render_scenarios
 from streamlit_pages.network import render_network_analysis
 from streamlit_pages.about import render_about
 from streamlit_pages.performance import render_performance
-from streamlit_pages.sparse_solver import render_sparse_solver  # ДОБАВЛЕНО
+from streamlit_pages.sparse_solver import render_sparse_solver
 
 __all__ = [
     'render_dashboard',

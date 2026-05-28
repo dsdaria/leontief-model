@@ -127,7 +127,7 @@ def main():
     
     st.markdown("---")
     
-    # Словарь страниц (ключи должны совпадать с кнопками в sidebar)
+    # Словарь страниц
     pages = {
         "🏠 Дашборд": render_dashboard,
         "🗺️ Тепловые карты": render_heatmaps,

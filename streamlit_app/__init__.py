@@ -1,6 +1,5 @@
 """
 Главное приложение модели Леонтьева
-Профессиональный интерфейс с мониторингом ОС
 """
 
 import streamlit as st
@@ -8,7 +7,7 @@ import warnings
 import sys
 from pathlib import Path
 
-# Добавляем корневую директорию в путь
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Импорт модулей Streamlit

@@ -1,6 +1,5 @@
 ﻿"""
-cpp_bridge.py - Мост между Python и C++ библиотекой для решения СЛАУ
-Поддерживает Windows (.dll) и Linux (.so)
+cpp_bridge.py - связывание Python и C++ библиотекой для решения СЛАУ
 """
 
 import ctypes

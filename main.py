@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Главный скрипт расчёта модели Леонтьева
-С поддержкой параллельных вычислений (Этап 3 ТЗ)
+С поддержкой параллельных вычислений
 Поддерживает Eurostat (64 отрасли) и EXIOBASE (200+ отраслей)
 """
 
@@ -558,7 +558,7 @@ def main():
             print(f"      Общий эффект: {result['total_effect']:,.1f} млн €")
             print(f"      Мультипликатор: {result['multiplier']:.3f}")
     
-    # ===== 5.5 МОНТЕ-КАРЛО АНАЛИЗ (опционально) =====
+    # ===== 5.5 МОНТЕ-КАРЛО АНАЛИЗ =====
     if args.monte_carlo > 0 and not args.no_parallel:
         print("\n🎲 Монте-Карло анализ...")
         try:
@@ -590,7 +590,7 @@ def main():
     
     visualization.PLOTS_DIR = original_plots_dir
     
-    # ===== БЕНЧМАРК (опционально) =====
+    # ===== БЕНЧМАРК =====
     if args.benchmark and not args.no_parallel:
         run_benchmark(model, Y_base, n_scenarios=min(50, len(scenarios) if scenarios else 20))
     
