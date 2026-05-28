@@ -73,7 +73,7 @@ def render_sidebar(pages_list=None):
     
     if cpp_available:
         st.sidebar.success("✅ **C++ решатель: активен**")
-        st.sidebar.caption(f"💻 Доступно ядер: {psutil.cpu_count()}")
+        # st.sidebar.caption(f"💻 Доступно ядер: {psutil.cpu_count()}")
     else:
         st.sidebar.error("❌ **C++ решатель: не найден**")
         st.sidebar.caption("Используется Python (медленнее)")
@@ -154,17 +154,17 @@ def render_sidebar(pages_list=None):
             st.rerun()
     
     # Настройки производительности
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### ⚡ Производительность")
+    # st.sidebar.markdown("---")
+    # st.sidebar.markdown("### ⚡ Производительность")
     
-    threads = st.sidebar.slider(
-        "Количество потоков:",
-        min_value=1,
-        max_value=16,
-        value=st.session_state.get('threads', 8),
-        step=1
-    )
-    st.session_state.threads = threads
+    # threads = st.sidebar.slider(
+    #     "Количество потоков:",
+    #     min_value=1,
+    #     max_value=16,
+    #     value=st.session_state.get('threads', 8),
+    #     step=1
+    # )
+    # st.session_state.threads = threads
 
 
 def render_footer(data: Dict):
